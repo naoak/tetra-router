@@ -1,0 +1,305 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-styles/paper-styles.html">
+<link rel="import" href="../iron-resizable-behavior/iron-resizable-behavior.html">
+<link rel="import" href="../neon-animation/neon-animation-runner-behavior.html">
+<link rel="import" href="../neon-animation/animations/opaque-animation.html">
+<link rel="import" href="app-router-utilities.html">
+
+<dom-module id="tetra-router">
+
+  <style>
+    :host {
+      display: block;
+      position: relative;
+    }
+    :host > ::content > * {
+      @apply(--layout-fit);
+      height: 100%;
+    }
+    :host > ::content > :not(.active):not(.animating) {
+      display: none !important;
+    }
+    :host > ::content > .animating {
+      pointer-events: none;
+    }
+  </style>
+
+  <template>
+    <content id="content"></content>
+  </template>
+
+</dom-module>
+
+
+<script>
+
+(function() {
+
+  var isIE = 'ActiveXObject' in window;
+  var importedURIs = {};
+  var util = Polymer.AppRouterUtilities;
+
+  Polymer({
+
+    is: 'tetra-router',
+
+    behaviors: [
+      Polymer.IronResizableBehavior,
+      Polymer.NeonAnimationRunnerBehavior
+    ],
+
+    properties: {
+
+      // trailingSlash="strict|ignore"
+      trailingSlash: {
+        type: String,
+        value: 'strict'
+      },
+
+      // mode="auto|hash|hashbang|pushstate"
+      mode: {
+        type: String,
+        value: 'auto'
+      },
+
+      // typecast="auto|string"
+      typecast: {
+        type: String,
+        value: 'auto'
+      }
+    },
+
+    listeners: {
+      'neon-animation-finish': 'onNeonAnimationFinish'
+    },
+
+    created: function() {
+      this.previousUrl = {};
+    },
+
+    ready: function() {
+      this.onStateChange();
+    },
+
+    attached: function() {
+      this._onStateChange = this.onStateChange.bind(this);
+      window.addEventListener('popstate', this._onStateChange);
+      if (isIE) {
+        window.addEventListener('hashchange', this._onStateChange);
+      }
+    },
+
+    detached: function() {
+      window.removeEventListener('popstate', this._onStateChange);
+      if (isIE) {
+        window.removeEventListener('hashchange', this._onStateChange);
+      }
+    },
+
+    onStateChange: function() {
+      var url = util.parseUrl(window.location.href, 'hash');
+
+      if (isOnlyHashChanged(this.previousUrl, url)) {
+        util.scrollToHash(url.hash);
+        this.previousUrl = url;
+        return;
+      }
+
+      this.previousUrl = url;
+
+      var route = Polymer.dom(this).firstElementChild;
+      while (route) {
+        var path = route.getAttribute && route.getAttribute('path');
+        if (path && util.testRoute(path, url.path, this.trailingSlash, this.hasAttribute('regex'))) {
+          this.activateRoute(route, url);
+          return;
+        }
+        route = Polymer.dom(route).nextSibling;
+      }
+    },
+
+    deactivateRoute: function(route) {
+      if (route) {
+        Polymer.dom(route).classList.remove('animating');
+        var node = Polymer.dom(route).firstChild;
+        while (node) {
+          var nextNode = Polymer.dom(node).nextSibling;
+          Polymer.dom(route).removeChild(node);
+          node = nextNode;
+        }
+      }
+    },
+
+    activateRoute: function(route, url) {
+      if (route == this.activeRoute) {
+        return;
+      }
+
+      var eventDetail = {
+        path: url.path,
+        route: route,
+        oldRoute: this.activeRoute
+      };
+
+      this.loadingRoute = route;
+
+      if (route.hasAttribute('import')) {
+        this.importAndActivate(route.getAttribute('import'), route, url, eventDetail);
+      }
+    },
+
+    importAndActivate: function(importUri, route, url, eventDetail) {
+      var self = this;
+      var importLink;
+
+      function importLoadedCallback() {
+        importLink.loaded = true;
+        self.activateImport(importLink, importUri, route, url, eventDetail);
+      }
+
+      if (!(importUri in importedURIs)) {
+        importLink = document.createElement('link');
+        importLink.rel = 'import';
+        importLink.href = importUri;
+        importLink.setAttribute('async', 'async');
+        importLink.addEventListener('load', importLoadedCallback);
+        importLink.loaded = false;
+        document.head.appendChild(importLink);
+        importedURIs[importUri] = importLink;
+      }
+      else {
+        importLink = importedURIs[importUri];
+        if (!importLink.loaded) {
+          importLink.addEventListener('load', importLoadedCallback);
+        }
+        else {
+          this.activateImport(importLink, importUri, route, url, eventDetail);
+        }
+      }
+    },
+
+    activateImport: function(importLink, importUri, route, url, eventDetail) {
+      route.importLink = importLink;
+
+      if (route == this.loadingRoute) {
+        this.activateCustomElement(importUri.split('/').slice(-1)[0].replace('.html', ''), route, url, eventDetail);
+      }
+    },
+
+    activateCustomElement: function(elementName, route, url, eventDetail) {
+      var customElement = document.createElement(elementName);
+      var model = this.createModel(route, url, eventDetail);
+      setObjectProperties(customElement, model);
+      this.activateElement(customElement, url, eventDetail);
+    },
+
+    activateElement: function(element, url) {
+      this.deactivateRoute(this.previousRoute);
+
+      this.previousRoute = this.activeRoute;
+      this.activeRoute = this.loadingRoute;
+      this.loadingRoute = null;
+
+      Polymer.dom(this.activeRoute).appendChild(element);
+
+      this.setupAnimations();
+    },
+
+    createModel: function(route, url, eventDetail) {
+      var model = util.routeArguments(route.getAttribute('path'), url.path, url.search, route.hasAttribute('regex'), this.typecast === 'auto');
+      eventDetail.model = model;
+      return eventDetail.model;
+    },
+
+    setupAnimations: function() {
+      var entryPage;
+      var exitPage;
+
+      this.animationConfig = [];
+
+      entryPage = getAnimationPage(this.activeRoute);
+
+      if (entryPage) {
+        // insert safari fix.
+        this.animationConfig.push({
+          name: 'opaque-animation',
+          node: entryPage
+        });
+
+        this.animationConfig.push({
+          animatable: entryPage,
+          type: 'entry'
+        });
+      }
+
+      if (this.previousRoute) {
+        exitPage = getAnimationPage(this.previousRoute);
+        if (exitPage) {
+          this.animationConfig.push({
+            animatable: exitPage,
+            type: 'exit'
+          });
+        }
+        Polymer.dom(this.previousRoute).classList.add('animating');
+        Polymer.dom(this.previousRoute).classList.remove('active');
+      }
+
+      Polymer.dom(this.activeRoute).classList.add('active', 'animating');
+
+      if (this.animationConfig.length > 1) {
+        if (!this.isAttached) {
+          this.async(function () {
+            this.playAnimation(null, {
+              fromPage: null,
+              toPage: entryPage
+            });
+          });
+        }
+        else {
+          this.playAnimation(null, {
+            fromPage: exitPage,
+            toPage: entryPage
+          });
+        }
+      }
+      else {
+        this.completePageTransition();
+      }
+    },
+
+    onNeonAnimationFinish: function() {
+      this.completePageTransition();
+    },
+
+    completePageTransition: function() {
+      this.deactivateRoute(this.previousRoute);
+      Polymer.dom(this.activeRoute).classList.remove('animating');
+      this.async(this.notifyResize);
+    }
+  });
+
+  function isOnlyHashChanged(previousUrl, url) {
+    return url.hash !== previousUrl.hash && url.path === previousUrl.path && url.search === previousUrl.search && url.isHashPath === previousUrl.isHashPath;
+  }
+
+  // Copy properties from one object to another
+  function setObjectProperties(object, model) {
+    for (var property in model) {
+      if (model.hasOwnProperty(property)) {
+        object[property] = model[property];
+      }
+    }
+  }
+
+  function getAnimationPage(route) {
+    var nodes = Polymer.dom(route).childNodes;
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].getAnimationConfig) {
+        return nodes[i];
+      }
+    }
+    return null;
+  }
+
+})();
+</script>
