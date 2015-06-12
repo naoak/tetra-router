@@ -16,9 +16,7 @@
   "private": true,
   "dependencies": {
     "polymer": "Polymer/polymer#~1.0.3",
-    "neon-animation": "PolymerElements/neon-animation#~1.0.1"
-  },
-  "devDependencies": {
+    "neon-animation": "PolymerElements/neon-animation#~1.0.1",
     "paper-styles": "PolymerElements/paper-styles#~1.0.4"
   }
 }
