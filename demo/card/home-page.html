@@ -1,0 +1,174 @@
+<link rel="import" href="../../../polymer/polymer.html">
+<link rel="import" href="../../../paper-styles/paper-styles.html">
+<link rel="import" href="../../../iron-icons/iron-icons.html">
+<link rel="import" href="../../../paper-fab/paper-fab.html">
+<link rel="import" href="../../../neon-animation/neon-shared-element-animatable-behavior.html">
+<link rel="import" href="my-ripple-animation.html">
+
+<dom-module id="home-page">
+
+  <link rel="import" type="css" href="../shared.css">
+
+  <style>
+
+    :host {
+      display: block;
+      background: #ddd;
+      height: 100%;
+      overflow-y: auto;
+    }
+
+    #header {
+      position: relative;
+      background: #36f;
+      height: 128px;
+      padding: 16px;
+      box-sizing: border-box;
+      box-shadow: 0px 5px 6px -3px rgba(0, 0, 0, 0.4);
+      z-index: 1;
+    }
+
+    h1 {
+      margin: 0;
+      padding: 0;
+      font-size: 18px;
+      color: #fff;
+    }
+
+    h2 {
+      margin: 16px;
+      font-size: 16px;
+      color: #eee;
+    }
+
+    h3 {
+      margin: 0;
+      padding: 8px;
+      font-size: 14px;
+      font-weight: normal;
+    }
+
+    .card {
+      width: 90%;
+      height: 128px;
+      margin: 32px auto;
+      padding: 8px;
+      background-color: #fff;
+      border-radius: 1px;
+      box-sizing: border-box;
+      @apply(--shadow-elevation-2dp);
+    }
+
+  </style>
+
+  <template>
+
+    <header id="header">
+      <h1>Home Main Title</h1>
+      <h2>This is a sub title<h2>
+    </header>
+
+    <div id="content">
+      <template is="dom-repeat" items="{{items}}">
+        <div class="card" on-click="detail" data-color$="{{item.color}}">
+          <div class$="{{item.color}}">
+            <h3>{{item.color}}</h3>
+          </div>
+        </div>
+      </template>
+    </div>
+
+  </template>
+
+</dom-module>
+
+<script>
+
+  Polymer({
+
+    is: 'home-page',
+
+    behaviors: [
+      Polymer.NeonSharedElementAnimatableBehavior
+    ],
+
+    properties: {
+
+      baseColors: {
+        type: Array,
+        value: ['red', 'yellow' ,'blue', 'green']
+      },
+
+      items: {
+        type: Array,
+        value: [],
+        computed: 'computeItems(baseColors)'
+      },
+
+      animationConfig: {
+        type: Object,
+        value: function() {
+          return {
+            entry: [
+              {
+                name: 'fade-in-animation',
+                node: this
+              },
+            ],
+            exit: [
+              {
+                name: 'fade-out-animation',
+                node: this
+              },
+              {
+                name: 'my-ripple-animation',
+                id: 'ripple',
+                fromPage: this
+              }
+            ]
+          }
+        }
+      },
+
+    },
+
+    computeItems: function(baseColors) {
+      var result = [];
+      var suffixes = ['300'];
+
+      for (var i = 0; i < baseColors.length; i++) {
+        var color = baseColors[i];
+        for (var s = 0; s < suffixes.length; s++) {
+          var suffix = suffixes[s];
+          var colorClass = color + '-' + suffix;
+          result.push({
+            color: colorClass
+          });
+        }
+      }
+      return result;
+    },
+
+    detail: function(event) {
+
+      var target = event.currentTarget;
+      var color = target.getAttribute('data-color');
+
+      this.sharedElements = {
+        'ripple': target
+      };
+
+      var x = event.x || event.pageX;
+      var y = event.y || event.pageY;
+
+      this.animationConfig['exit'][1].gesture = {
+        x: x,
+        y: y
+      };
+
+      window.location = './#/detail/' + color;
+    }
+
+  });
+
+</script>
