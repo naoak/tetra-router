@@ -38,6 +38,7 @@
   var isIE = 'ActiveXObject' in window;
   var importedURIs = {};
   var util = Polymer.AppRouterUtilities;
+  var domapi = Polymer.dom;
 
   Polymer({
 
@@ -107,24 +108,24 @@
 
       this.previousUrl = url;
 
-      var route = Polymer.dom(this).firstElementChild;
+      var route = domapi(this).firstElementChild;
       while (route) {
         var path = route.getAttribute && route.getAttribute('path');
         if (path && util.testRoute(path, url.path, this.trailingSlash, this.hasAttribute('regex'))) {
           this.activateRoute(route, url);
           return;
         }
-        route = Polymer.dom(route).nextSibling;
+        route = domapi(route).nextSibling;
       }
     },
 
     deactivateRoute: function(route) {
       if (route) {
-        Polymer.dom(route).classList.remove('animating');
-        var node = Polymer.dom(route).firstChild;
+        domapi(route).classList.remove('animating');
+        var node = domapi(route).firstChild;
         while (node) {
-          var nextNode = Polymer.dom(node).nextSibling;
-          Polymer.dom(route).removeChild(node);
+          var nextNode = domapi(node).nextSibling;
+          domapi(route).removeChild(node);
           node = nextNode;
         }
       }
@@ -200,7 +201,7 @@
       this.activeRoute = this.loadingRoute;
       this.loadingRoute = null;
 
-      Polymer.dom(this.activeRoute).appendChild(element);
+      domapi(this.activeRoute).appendChild(element);
 
       this.setupAnimations();
     },
@@ -240,11 +241,11 @@
             type: 'exit'
           });
         }
-        Polymer.dom(this.previousRoute).classList.add('animating');
-        Polymer.dom(this.previousRoute).classList.remove('active');
+        domapi(this.previousRoute).classList.add('animating');
+        domapi(this.previousRoute).classList.remove('active');
       }
 
-      Polymer.dom(this.activeRoute).classList.add('active', 'animating');
+      domapi(this.activeRoute).classList.add('active', 'animating');
 
       if (this.animationConfig.length > 1) {
         if (!this.isAttached) {
@@ -273,7 +274,7 @@
 
     completePageTransition: function() {
       this.deactivateRoute(this.previousRoute);
-      Polymer.dom(this.activeRoute).classList.remove('animating');
+      domapi(this.activeRoute).classList.remove('animating');
       this.async(this.notifyResize);
     }
   });
@@ -292,7 +293,7 @@
   }
 
   function getAnimationPage(route) {
-    var nodes = Polymer.dom(route).childNodes;
+    var nodes = domapi(route).childNodes;
     for (var i = 0; i < nodes.length; i++) {
       if (nodes[i].getAnimationConfig) {
         return nodes[i];
