@@ -1,0 +1,169 @@
+<link rel="import" href="../../../polymer/polymer.html">
+<link rel="import" href="../../../paper-styles/paper-styles.html">
+<link rel="import" href="../../../iron-icons/iron-icons.html">
+<link rel="import" href="../../../paper-button/paper-button.html">
+<link rel="import" href="../../../neon-animation/neon-shared-element-animatable-behavior.html">
+
+<dom-module id="action-page">
+
+  <link rel="import" type="css" href="../shared.css">
+
+  <style>
+
+    :host {
+      display: block;
+      background: #fff;
+      height: 100%;
+    }
+
+    #header {
+      position: relative;
+      background: #d04037;
+      height: 96px;
+      padding: 16px;
+      box-sizing: border-box;
+      box-shadow: 0px 5px 6px -3px rgba(0, 0, 0, 0.4);
+      z-index: 1;
+    }
+
+    #content {
+      position: absolute;
+      top: 96px;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      min-height: 128px;
+      padding: 16px;
+      z-index: 0;
+      box-sizing: border-box;
+    }
+
+    #operations {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+    }
+
+    h1 {
+      margin: 0;
+      padding: 0;
+      font-size: 18px;
+      color: #fff;
+    }
+
+    h2 {
+      margin: 16px;
+      font-size: 16px;
+      color: #eee;
+    }
+
+    h3 {
+      margin: 16px 0;
+      padding: 0;
+    }
+
+    .label {
+      text-decoration: underline;
+    }
+
+    [icon=check] {
+      color: green;
+    }
+  </style>
+
+  <template>
+
+    <header id="header">
+      <h1>Action Main Title</h1>
+      <h2>This is a sub title<h2>
+    </header>
+
+    <section id="content">
+      <h3>Label</h3>
+      <div class="label">My Home</div>
+      <div id="operations">
+        <paper-button on-tap="cancel">Cancel</paper-button>
+        <paper-button on-tap="ok"><iron-icon icon="check"></iron-icon> OK</paper-button>
+      </div>
+    </section>
+
+  </template>
+
+</dom-module>
+
+<script>
+
+  Polymer({
+
+    is: 'action-page',
+
+    behaviors: [
+      Polymer.NeonSharedElementAnimatableBehavior
+    ],
+
+    properties: {
+
+      animationConfig: {
+        type: Object,
+        value: function() {
+          return {
+            entry: [
+              {
+                name: 'fade-in-animation',
+                node: this
+              },
+              {
+                name: 'hero-animation',
+                id: 'hero',
+                toPage: this
+              },
+              {
+                name: 'transform-animation',
+                transformFrom: 'translate(0px, -200vh) scale(0.9,1)',
+                transformTo: 'none',
+                node: this.$.content
+              }
+            ],
+            exit: [
+              {
+                name: 'fade-out-animation',
+                node: this
+              },
+              {
+                name: 'transform-animation',
+                transformFrom: 'none',
+                transformTo: 'translate(0px, -200vh) scale(0.9,1)',
+                node: this.$.content
+              },
+              {
+                name: 'hero-animation',
+                id: 'hero',
+                fromPage: this
+              }
+            ]
+          }
+        }
+      },
+
+      sharedElements: {
+        type: Object,
+        value: function() {
+          return {
+            hero: this.$.header
+          };
+        }
+      }
+
+    },
+
+    cancel: function() {
+      window.location = './#/home';
+    },
+
+    ok: function() {
+      window.location = './#/home/checked/true';
+    }
+
+  });
+
+</script>
