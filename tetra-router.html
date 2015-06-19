@@ -111,7 +111,7 @@
       var route = domapi(this).firstElementChild;
       while (route) {
         var path = route.getAttribute && route.getAttribute('path');
-        if (path && util.testRoute(path, url.path, this.trailingSlash, this.hasAttribute('regex'))) {
+        if (path && util.testRoute(path, url.path, this.trailingSlash, route.hasAttribute('regex'))) {
           this.activateRoute(route, url);
           return;
         }
